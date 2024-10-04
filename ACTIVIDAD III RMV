@@ -1,0 +1,251 @@
+ORG 0000H           ; Inicio del programa en la dirección 0x0000
+START:
+    LD SP, 4000H    ; Inicializa el puntero de la pila
+
+    ; Mensaje inicial
+    CALL DISPLAY_INIT_MSG
+
+GENERATE_RANDOM_NUMBERS:
+    LD BC, 20       ; Generar 20 números pseudoaleatorios
+    CALL GENERATE_RANDOMS
+    CALL DISPLAY_RANDOMS    ; Muestra los números generados
+
+    ; Pregunta sobre el tipo de ordenamiento
+    CALL ASK_SORT_ORDER
+
+    ; Muestra los números ordenados
+    CALL DISPLAY_SORTED_NUMBERS
+
+    ; Pregunta si se desea continuar o finalizar
+    CALL ASK_CONTINUE
+    JP Z, EXIT      ; Si elige salir, termina el programa
+    JP GENERATE_RANDOM_NUMBERS ; Si elige continuar, vuelve a generar
+
+EXIT:
+    CALL DISPLAY_EXIT_MSG    ; Muestra mensaje de salida
+    RET
+
+; ------------------------------------------------------
+; Rutina para generar 20 números pseudoaleatorios y almacenarlos en memoria
+GENERATE_RANDOMS:
+    LD HL, RANDOM_NUMBERS_AREA   ; Apunta al área en memoria donde se almacenan los números
+    LD A, R                     ; Usa el registro 'R' como semilla pseudoaleatoria
+GENERATE_LOOP:
+    LD D, A
+    RLCA                        ; Rota el acumulador a la izquierda
+    XOR D                       ; Aplica XOR con D para variabilidad
+    LD (HL), A                  ; Almacena el número en la dirección apuntada por HL
+    INC HL                      ; Avanza al siguiente byte en memoria
+    DEC BC                      ; Disminuye el contador
+    JP NZ, GENERATE_LOOP         ; Repite si no ha generado los 20 números
+    RET
+
+RANDOM_NUMBERS_AREA: DS 20       ; Área en memoria para almacenar los números generados
+
+; ------------------------------------------------------
+; Rutina para mostrar los números generados en pantalla
+DISPLAY_RANDOMS:
+    LD HL, RANDOM_NUMBERS_AREA   ; Apunta al área donde están almacenados los números
+    LD BC, 20                    ; 20 números para mostrar
+DISPLAY_LOOP:
+    LD A, (HL)                   ; Carga el número desde memoria en A
+    CALL DISPLAY_DECIMAL          ; Muestra el número en formato decimal
+    CALL NEW_LINE                 ; Salto de línea
+    INC HL                       ; Avanza al siguiente número
+    DEC BC                       ; Decrementa el contador
+    JP NZ, DISPLAY_LOOP          ; Si aún quedan números por mostrar, continúa
+    RET
+
+; ------------------------------------------------------
+; Rutina para preguntar cómo ordenar los números (Ascendente o Descendente)
+ASK_SORT_ORDER:
+    CALL DISPLAY_SORT_ORDER_MSG   ; Muestra el mensaje "¿Ascendente o Descendente?"
+    CALL GET_USER_INPUT           ; Obtiene la opción del usuario
+    CP 'A'                        ; Compara si la opción es 'A' (Ascendente)
+    JP Z, SORT_ASCENDING          ; Si es ascendente, va a la rutina de orden ascendente
+    CP 'D'                        ; Compara si es 'D' (Descendente)
+    JP Z, SORT_DESCENDING         ; Si es descendente, va a la rutina de orden descendente
+    JP ASK_SORT_ORDER             ; Si la entrada no es válida, vuelve a preguntar
+
+; ------------------------------------------------------
+; Rutina para ordenar los números en forma ascendente
+SORT_ASCENDING:
+    LD HL, RANDOM_NUMBERS_AREA    ; Apunta al área de los números generados
+    LD DE, SORTED_NUMBERS_AREA    ; Área para los números ordenados
+    CALL BUBBLE_SORT_ASCENDING    ; Llama al algoritmo de burbuja para orden ascendente
+    RET
+
+; Rutina para ordenar los números en forma descendente
+SORT_DESCENDING:
+    LD HL, RANDOM_NUMBERS_AREA    ; Apunta al área de los números generados
+    LD DE, SORTED_NUMBERS_AREA    ; Área para los números ordenados
+    CALL BUBBLE_SORT_DESCENDING   ; Llama al algoritmo de burbuja para orden descendente
+    RET
+
+SORTED_NUMBERS_AREA: DS 20        ; Área para almacenar los números ordenados
+
+; ------------------------------------------------------
+; Algoritmo de ordenamiento burbuja (ascendente)
+BUBBLE_SORT_ASCENDING:
+    LD B, 19                      ; B es el número de pasadas necesarias
+BUBBLE_SORT_LOOP:
+    LD HL, RANDOM_NUMBERS_AREA
+    LD C, 19                      ; C es el número de comparaciones en cada pasada
+COMPARE_LOOP:
+    LD A, (HL)                    ; Carga el número actual
+    LD D, A                       ; Copia el número a D
+    INC HL                        ; Apunta al siguiente número
+    LD A, (HL)                    ; Carga el siguiente número
+    CP D                          ; Compara los dos números
+    JP NC, NO_SWAP                ; Si no necesita intercambio, continúa
+    LD E, (HL)                    ; Intercambia los números
+    DEC HL
+    LD (HL), E
+    INC HL
+    LD (HL), D
+NO_SWAP:
+    DEC C
+    JP NZ, COMPARE_LOOP           ; Si hay más comparaciones, sigue
+    DEC B
+    JP NZ, BUBBLE_SORT_LOOP       ; Si hay más pasadas, sigue
+    RET
+
+; ------------------------------------------------------
+; Algoritmo de ordenamiento burbuja (descendente)
+BUBBLE_SORT_DESCENDING:
+    LD B, 19                      ; B es el número de pasadas necesarias
+BUBBLE_SORT_DESCENDING_LOOP:
+    LD HL, RANDOM_NUMBERS_AREA
+    LD C, 19                      ; C es el número de comparaciones en cada pasada
+COMPARE_DESC_LOOP:
+    LD A, (HL)                    ; Carga el número actual
+    LD D, A                       ; Copia el número a D
+    INC HL                        ; Apunta al siguiente número
+    LD A, (HL)                    ; Carga el siguiente número
+    CP D                          ; Compara los dos números
+    JP C, NO_DESC_SWAP            ; Si no necesita intercambio, continúa
+    LD E, (HL)                    ; Intercambia los números
+    DEC HL
+    LD (HL), E
+    INC HL
+    LD (HL), D
+NO_DESC_SWAP:
+    DEC C
+    JP NZ, COMPARE_DESC_LOOP      ; Si hay más comparaciones, sigue
+    DEC B
+    JP NZ, BUBBLE_SORT_DESCENDING_LOOP ; Si hay más pasadas, sigue
+    RET
+
+; ------------------------------------------------------
+; Rutina para mostrar los números ordenados en pantalla
+DISPLAY_SORTED_NUMBERS:
+    LD HL, SORTED_NUMBERS_AREA    ; Apunta al área donde están los números ordenados
+    LD BC, 20                     ; 20 números para mostrar
+DISPLAY_SORTED_LOOP:
+    LD A, (HL)                    ; Carga el número desde memoria en A
+    CALL DISPLAY_DECIMAL          ; Muestra el número en formato decimal
+    CALL NEW_LINE                 ; Salto de línea
+    INC HL                       ; Avanza al siguiente número
+    DEC BC                        ; Decrementa el contador
+    JP NZ, DISPLAY_SORTED_LOOP    ; Si aún quedan números por mostrar, continúa
+    RET
+
+; ------------------------------------------------------
+; Rutina para preguntar si se desea continuar o terminar
+ASK_CONTINUE:
+    CALL DISPLAY_CONTINUE_MSG     ; Muestra el mensaje "¿Deseas continuar? (S/N)"
+    CALL GET_USER_INPUT           ; Lee la opción del usuario
+    CP 'S'                        ; Compara si la opción es 'S' (Sí)
+    RET Z                         ; Si es 'S', retorna para continuar
+    CP 'N'                        ; Compara si la opción es 'N' (No)
+    JP Z, EXIT                    ; Si es 'N', salta a terminar el programa
+    JP ASK_CONTINUE               ; Si la entrada no es válida, vuelve a preguntar
+
+; ------------------------------------------------------
+; Rutina para obtener entrada del usuario desde el teclado usando PPI
+GET_USER_INPUT:
+    IN A, (PPI_PORT)              ; Lee del puerto PPI (teclado)
+    RET
+
+; ------------------------------------------------------
+; Rutina para mostrar un número en formato decimal
+DISPLAY_DECIMAL:
+    PUSH AF
+    PUSH BC
+    PUSH HL
+    LD B, 0             ; Limpia B
+    LD C, 10            ; Base 10 para conversión
+    LD HL, 0000H        ; Acumulador de dígitos decimales
+CONVERT_TO_DEC:
+    DIVIDE_BY_TEN:
+    LD D, A
+    DIVIDE_LOOP:
+    SUB C
+    JR C, DONE_DIVIDE
+    INC B               ; Incrementa el cociente
+    JR DIVIDE_LOOP
+DONE_DIVIDE:
+    ADD A, C            ; Restaura valor anterior
+    LD (HL), B
+    INC HL
+    POP HL
+    POP BC
+    POP AF
+    CALL DISPLAY_CHARACTER
+    RET
+
+; ------------------------------------------------------
+; Rutinas para mostrar mensajes de texto en pantalla
+DISPLAY_INIT_MSG:
+    LD HL, INIT_MSG
+    CALL DISPLAY_STRING
+    RET
+
+DISPLAY_SORT_ORDER_MSG:
+    LD HL, SORT_ORDER_MSG
+    CALL DISPLAY_STRING
+    RET
+
+DISPLAY_CONTINUE_MSG:
+    LD HL, CONTINUE_MSG
+    CALL DISPLAY_STRING
+    RET
+
+DISPLAY_EXIT_MSG:
+    LD HL, EXIT_MSG
+    CALL DISPLAY_STRING
+    RET
+
+; ------------------------------------------------------
+; Rutina para mostrar un carácter en pantalla
+DISPLAY_CHARACTER:
+    OUT (PPI_PORT), A             ; Envía el carácter al puerto PPI (pantalla)
+    RET
+
+; ------------------------------------------------------
+; Rutina para mostrar una cadena de caracteres en pantalla
+DISPLAY_STRING:
+    LD A, (HL)                    ; Carga el primer carácter de la cadena
+    OR A                          ; Verifica si es el fin de la cadena (código 0)
+    RET Z                         ; Si es 0, fin de la cadena
+    CALL DISPLAY_CHARACTER        ; Muestra el carácter
+    INC HL                        ; Avanza al siguiente carácter
+    JP DISPLAY_STRING             ; Continua hasta el final de la cadena
+
+; ------------------------------------------------------
+; Rutina para salto de línea
+NEW_LINE:
+    LD A, 0AH                     ; Código ASCII de nueva línea (LF)
+    CALL DISPLAY_CHARACTER
+    LD A, 0DH                     ; Código ASCII de retorno de carro (CR)
+    CALL DISPLAY_CHARACTER
+    RET
+
+; ------------------------------------------------------
+; Definición de mensajes de texto
+INIT_MSG:         DB 'Iniciando generación de números...', 0
+SORT_ORDER_MSG:   DB '¿Ascendente o Descendente? (A/D)', 0
+CONTINUE_MSG:     DB '¿Deseas continuar? (S/N)', 0
+EXIT_MSG:         DB 'Saliendo del programa', 0
+
+PPI_PORT: EQU 0FFH  ; Dirección del puerto del PPI
